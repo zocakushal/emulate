@@ -106,6 +106,201 @@ const defaultGoogleConfig = {
   },
 };
 
+const defaultGlossgeniusConfig = {
+  glossgenius: {
+    businesses: [
+      {
+        slug: "test-salon",
+        name: "Test Salon",
+      },
+    ],
+    services: [
+      {
+        name: "Haircut",
+        price: "50.00",
+        duration: 45,
+        business_slug: "test-salon",
+      },
+    ],
+    providers: [
+      {
+        name: "Jane Doe",
+        business_slug: "test-salon",
+      },
+    ],
+    reviews: [
+      {
+        rating: 5,
+        message: "Great service!",
+        reviewer_name: "Happy Client",
+        business_slug: "test-salon",
+      },
+    ],
+  },
+};
+
+const defaultAcuityConfig = {
+  acuity: {
+    oauth_clients: [
+      {
+        client_id: "test-client-id",
+        client_secret: "test-client-secret",
+        redirect_uris: ["http://localhost:3000/callback"],
+      },
+    ],
+    owners: [
+      {
+        name: "Test Owner",
+        email: "owner@example.com",
+        currency: "USD",
+      },
+    ],
+    calendars: [
+      {
+        name: "Main Calendar",
+        location: "Downtown Studio",
+        timezone: "America/New_York",
+      },
+    ],
+    appointment_types: [
+      {
+        name: "Consultation",
+        duration: 60,
+        price: "100.00",
+        category: "Services",
+      },
+    ],
+  },
+};
+
+const defaultVagaroConfig = {
+  vagaro: {
+    businesses: [
+      {
+        business_id: "BIZ001",
+        region: "us04",
+        client_id: "test-client",
+        client_secret: "test-secret",
+      },
+    ],
+    services: [
+      {
+        name: "Haircut",
+        duration: 30,
+        price: 40,
+        business_id: "BIZ001",
+      },
+    ],
+    employees: [
+      {
+        name: "Jane Stylist",
+        business_id: "BIZ001",
+      },
+    ],
+    locations: [
+      {
+        name: "Main Salon",
+        business_id: "BIZ001",
+      },
+    ],
+  },
+};
+
+const defaultMindbodyConfig = {
+  mindbody: {
+    api_key: "test-api-key",
+    sites: [
+      {
+        site_id: "123456",
+        name: "Test Studio",
+        email: "studio@example.com",
+        currency: "USD",
+      },
+    ],
+    locations: [
+      {
+        name: "Main Location",
+        site_id: "123456",
+        address: "123 Main St",
+      },
+    ],
+    session_types: [
+      {
+        name: "Haircut",
+        duration: 30,
+        price: 50,
+        program_id: 1,
+      },
+    ],
+    clients: [
+      {
+        first_name: "John",
+        last_name: "Doe",
+        email: "john@example.com",
+        phone: "+15551234567",
+      },
+    ],
+  },
+};
+
+const defaultSquareConfig = {
+  square: {
+    oauth_clients: [
+      {
+        client_id: "sq0idp-test",
+        client_secret: "sq0csp-test",
+        redirect_uris: ["http://localhost:3000/callback"],
+      },
+    ],
+    merchants: [
+      {
+        name: "Test Business",
+        currency: "USD",
+        country: "US",
+      },
+    ],
+    locations: [
+      {
+        name: "Main Location",
+        address: "123 Main St",
+        timezone: "America/New_York",
+      },
+    ],
+    catalog_items: [
+      {
+        name: "Haircut",
+        variations: [
+          {
+            name: "Standard",
+            price: 4000,
+            duration: 30,
+          },
+          {
+            name: "Premium",
+            price: 6000,
+            duration: 45,
+          },
+        ],
+      },
+    ],
+    team_members: [
+      {
+        given_name: "Jane",
+        family_name: "Stylist",
+        status: "ACTIVE",
+      },
+    ],
+    customers: [
+      {
+        given_name: "John",
+        family_name: "Doe",
+        email: "john@example.com",
+        phone: "+15551234567",
+      },
+    ],
+  },
+};
+
 const defaultTokens = {
   tokens: {
     "gho_test_token_admin": {
@@ -123,6 +318,11 @@ const serviceConfigs: Record<string, Record<string, unknown>> = {
   vercel: defaultVercelConfig,
   github: defaultGithubConfig,
   google: defaultGoogleConfig,
+  glossgenius: defaultGlossgeniusConfig,
+  acuity: defaultAcuityConfig,
+  vagaro: defaultVagaroConfig,
+  mindbody: defaultMindbodyConfig,
+  square: defaultSquareConfig,
 };
 
 export function initCommand(options: InitOptions): void {
@@ -141,6 +341,11 @@ export function initCommand(options: InitOptions): void {
       ...defaultVercelConfig,
       ...defaultGithubConfig,
       ...defaultGoogleConfig,
+      ...defaultGlossgeniusConfig,
+      ...defaultAcuityConfig,
+      ...defaultVagaroConfig,
+      ...defaultMindbodyConfig,
+      ...defaultSquareConfig,
     };
   } else {
     const svcConfig = serviceConfigs[options.service];

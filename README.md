@@ -13,6 +13,11 @@ All services start with sensible defaults. No config file needed:
 - **Vercel** on `http://localhost:4000`
 - **GitHub** on `http://localhost:4001`
 - **Google** on `http://localhost:4002`
+- **GlossGenius** on `http://localhost:4003`
+- **Acuity** on `http://localhost:4004`
+- **Vagaro** on `http://localhost:4005`
+- **Mindbody** on `http://localhost:4006`
+- **Square** on `http://localhost:4007`
 
 ## CLI
 
@@ -22,6 +27,9 @@ emulate
 
 # Start specific services
 emulate --service vercel,github
+
+# Start the scheduling platform emulators
+emulate --service glossgenius,acuity,vagaro,mindbody,square
 
 # Custom port
 emulate --port 3000
@@ -96,7 +104,7 @@ afterAll(() => Promise.all([github.close(), vercel.close()]))
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `service` | *(required)* | Service to emulate: `'github'`, `'vercel'`, or `'google'` |
+| `service` | *(required)* | Service to emulate: `'github'`, `'vercel'`, `'google'`, `'glossgenius'`, `'acuity'`, `'vagaro'`, `'mindbody'`, or `'square'` |
 | `port` | `4000` | Port for the HTTP server |
 | `seed` | none | Inline seed data (same shape as YAML config) |
 
@@ -154,6 +162,45 @@ google:
       client_secret: GOCSPX-secret
       redirect_uris:
         - http://localhost:3000/api/auth/callback/google
+
+glossgenius:
+  businesses:
+    - slug: test-salon
+      name: Test Salon
+  services:
+    - name: Haircut
+      price: "50.00"
+      duration: 45
+      business_slug: test-salon
+
+acuity:
+  owners:
+    - name: Test Owner
+      email: owner@example.com
+  calendars:
+    - name: Main Calendar
+      location: Downtown Studio
+      timezone: America/New_York
+
+vagaro:
+  businesses:
+    - business_id: BIZ001
+      region: us04
+      client_id: test-client
+      client_secret: test-secret
+
+mindbody:
+  api_key: test-api-key
+  sites:
+    - site_id: "123456"
+      name: Test Studio
+      email: studio@example.com
+
+square:
+  merchants:
+    - name: Test Business
+      currency: USD
+      country: US
 ```
 
 ## OAuth & Integrations
@@ -211,6 +258,40 @@ github:
 ```
 
 JWT authentication: sign a JWT with `{ iss: "<app_id>" }` using the app's private key (RS256). The emulator verifies the signature and resolves the app.
+
+## Scheduling Platform Emulators
+
+The emulator also ships with five stateful scheduling platform plugins for local dev, CI, and provider integration tests.
+
+### GlossGenius
+
+- Auth: `Authorization: Bearer <business access token>` for `GET /v3/appointments`
+- Public endpoints: `GET /v3/web/available_times`, `GET /v3/web/portfolio_images`, `GET /v3/web/reviews`
+- Default seeded business: `test-salon`
+
+### Acuity Scheduling
+
+- Auth: OAuth 2.0 authorize/token flow, then Bearer token on `/api/v1/*`
+- Key endpoints: `GET /oauth2/authorize`, `POST /oauth2/token`, `GET /api/v1/me`, `GET /api/v1/appointment-types`, `GET /api/v1/calendars`, `GET /api/v1/availability/dates`, `GET /api/v1/availability/times`, `POST /api/v1/appointments`
+- Default seeded owner: `owner@example.com`
+
+### Vagaro
+
+- Auth: `POST /:region/api/v2/merchants/generate-access-token`, then `accessToken` header on API calls
+- Key endpoints: `POST /:region/api/v2/services`, `POST /:region/api/v2/appointments`, `POST /:region/api/v2/appointments/availability`, `POST /:region/api/v2/employees`, `POST /:region/api/v2/locations`, `POST /:region/api/v2/customers`, `POST /:region/api/v2/personal-tasks`
+- Default seeded business: `BIZ001` in region `us04`
+
+### Mindbody
+
+- Auth: `Api-Key` + `SiteId` headers, then `POST /public/v6/usertoken/issue` / `POST /public/v6/usertoken/renew` for bearer tokens
+- Key endpoints: `GET /public/v6/site/sites`, `GET /public/v6/site/sessiontypes`, `GET /public/v6/site/programs`, `GET /public/v6/site/locations`, `GET /public/v6/appointment/bookableitems`, `POST /public/v6/appointment/addappointment`, `POST /public/v6/appointment/updateappointment`, `GET /public/v6/client/clients`, `POST /public/v6/client/addclient`
+- Default seeded site: `123456` with API key `test-api-key`
+
+### Square Appointments
+
+- Auth: OAuth 2.0 authorize/token/revoke, then Bearer token on `/v2/*`
+- Key endpoints: `GET /oauth2/authorize`, `POST /oauth2/token`, `POST /oauth2/revoke`, `POST /v2/bookings`, `POST /v2/bookings/search/availability`, `GET /v2/bookings`, `POST /v2/bookings/:id/cancel`, `POST /v2/catalog/search`, `POST /v2/team-members/search`, `POST /v2/customers/search`, `GET /v2/locations`, `GET /v2/merchants/:id`
+- Default seeded merchant: `Test Business`
 
 ## Vercel API
 

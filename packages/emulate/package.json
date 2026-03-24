@@ -56,9 +56,14 @@
     "yaml": "^2"
   },
   "devDependencies": {
+    "@internal/acuity": "workspace:*",
     "@internal/core": "workspace:*",
     "@internal/github": "workspace:*",
+    "@internal/glossgenius": "workspace:*",
     "@internal/google": "workspace:*",
+    "@internal/mindbody": "workspace:*",
+    "@internal/square": "workspace:*",
+    "@internal/vagaro": "workspace:*",
     "@internal/vercel": "workspace:*",
     "tsup": "^8",
     "typescript": "^5.7"

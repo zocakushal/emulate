@@ -2,12 +2,22 @@ import { createServer, type AppKeyResolver, type AuthFallback, type Store } from
 import { vercelPlugin, seedFromConfig as seedVercel, type VercelSeedConfig } from "@internal/vercel";
 import { githubPlugin, seedFromConfig as seedGitHub, getGitHubStore, type GitHubSeedConfig } from "@internal/github";
 import { googlePlugin, seedFromConfig as seedGoogle, type GoogleSeedConfig } from "@internal/google";
+import { glossgeniusPlugin, seedFromConfig as seedGlossgenius, type GlossgeniusSeedConfig } from "@internal/glossgenius";
+import { acuityPlugin, seedFromConfig as seedAcuity, type AcuitySeedConfig } from "@internal/acuity";
+import { vagaroPlugin, seedFromConfig as seedVagaro, type VagaroSeedConfig } from "@internal/vagaro";
+import { mindbodyPlugin, seedFromConfig as seedMindbody, type MindbodySeedConfig } from "@internal/mindbody";
+import { squarePlugin, seedFromConfig as seedSquare, type SquareSeedConfig } from "@internal/square";
 import { serve } from "@hono/node-server";
 
 const SERVICE_PLUGINS = {
   vercel: vercelPlugin,
   github: githubPlugin,
   google: googlePlugin,
+  glossgenius: glossgeniusPlugin,
+  acuity: acuityPlugin,
+  vagaro: vagaroPlugin,
+  mindbody: mindbodyPlugin,
+  square: squarePlugin,
 } as const;
 
 export type ServiceName = keyof typeof SERVICE_PLUGINS;
@@ -17,6 +27,11 @@ export interface SeedConfig {
   vercel?: VercelSeedConfig;
   github?: GitHubSeedConfig;
   google?: GoogleSeedConfig;
+  glossgenius?: GlossgeniusSeedConfig;
+  acuity?: AcuitySeedConfig;
+  vagaro?: VagaroSeedConfig;
+  mindbody?: MindbodySeedConfig;
+  square?: SquareSeedConfig;
 }
 
 export interface EmulatorOptions {
@@ -76,6 +91,15 @@ export async function createEmulator(options: EmulatorOptions): Promise<Emulator
   } else if (service === "google") {
     const firstEmail = seedConfig?.google?.users?.[0]?.email ?? "testuser@gmail.com";
     fallbackUser = { login: firstEmail, id: 1, scopes: ["openid", "email", "profile"] };
+  } else if (service === "glossgenius") {
+    const firstBusiness = seedConfig?.glossgenius?.businesses?.[0]?.slug ?? "test-salon";
+    fallbackUser = { login: firstBusiness, id: 1, scopes: ["appointments:read"] };
+  } else if (service === "acuity") {
+    const firstEmail = seedConfig?.acuity?.owners?.[0]?.email ?? "owner@example.com";
+    fallbackUser = { login: firstEmail, id: 1, scopes: ["api-v1"] };
+  } else if (service === "square") {
+    const firstMerchant = seedConfig?.square?.merchants?.[0]?.name ?? "Test Business";
+    fallbackUser = { login: firstMerchant, id: 1, scopes: ["appointments:read", "customers:read", "catalog:read"] };
   }
 
   const { app, store } = createServer(plugin, { port, baseUrl, tokens, appKeyResolver, fallbackUser });
@@ -86,6 +110,11 @@ export async function createEmulator(options: EmulatorOptions): Promise<Emulator
     if (service === "vercel" && seedConfig?.vercel) seedVercel(store, baseUrl, seedConfig.vercel);
     if (service === "github" && seedConfig?.github) seedGitHub(store, baseUrl, seedConfig.github);
     if (service === "google" && seedConfig?.google) seedGoogle(store, baseUrl, seedConfig.google);
+    if (service === "glossgenius" && seedConfig?.glossgenius) seedGlossgenius(store, baseUrl, seedConfig.glossgenius);
+    if (service === "acuity" && seedConfig?.acuity) seedAcuity(store, baseUrl, seedConfig.acuity);
+    if (service === "vagaro" && seedConfig?.vagaro) seedVagaro(store, baseUrl, seedConfig.vagaro);
+    if (service === "mindbody" && seedConfig?.mindbody) seedMindbody(store, baseUrl, seedConfig.mindbody);
+    if (service === "square" && seedConfig?.square) seedSquare(store, baseUrl, seedConfig.square);
   };
   seed();
 
