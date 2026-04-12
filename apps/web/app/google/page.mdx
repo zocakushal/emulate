@@ -1,6 +1,6 @@
 # Google API
 
-The Google emulator provides OAuth 2.0 and OpenID Connect (OIDC) support for local development and testing.
+The Google emulator provides OAuth 2.0, OpenID Connect (OIDC), Google Business Profile (GBP), and Google Maps APIs support for local development and testing.
 
 ## Configuration
 
@@ -17,6 +17,15 @@ google:
       name: Code App (Google)
       redirect_uris:
         - http://localhost:3000/api/auth/callback/google
+  gbp:
+    accounts:
+      - account_id: "1234567890"
+        account_name: "Sample Business Account"
+    locations:
+      - location_id: "1111111111"
+        account_id: "1234567890"
+        title: "Verified Cafe"
+        verification_state: "COMPLETED"
 ```
 
 ## OAuth 2.0 Flow
@@ -31,8 +40,31 @@ The emulator implements the standard Google OAuth 2.0 authorization code flow:
 
 ## Endpoints
 
+### Authentication
 - `GET /o/oauth2/v2/auth` - authorization endpoint
 - `POST /oauth2/v4/token` - token exchange
 - `GET /oauth2/v2/userinfo` - get user info
 - `GET /.well-known/openid-configuration` - OIDC discovery document
 - `GET /oauth2/v3/certs` - JSON Web Key Set (JWKS)
+
+### Google Business Profile (GBP)
+- `GET /v1/accounts` - List accounts
+- `GET /v1/accounts/{accountId}/locations` - List locations for an account
+- `GET /v1/{name=locations/*}` - Get location details
+- `PATCH /v1/{name=locations/*}` - Update location
+- `GET /v1/locations/{locationId}/fetchVerificationOptions` - Fetch verification options
+- `POST /v1/locations/{locationId}/verify` - Verify a location
+- `GET /v1/{name=accounts/*/locations/*/localPosts}` - List local posts
+- `POST /v1/{parent=accounts/*/locations/*}/localPosts` - Create local post
+- `GET /v1/{name=accounts/*/locations/*/reviews}` - List reviews
+- `POST /v1/{parent=accounts/*/locations/*}/reviews/{reviewId}/reply` - Reply to review
+- `GET /v1/{name=accounts/*/locations/*/performanceMetrics:fetchMultiDailyMetricsTimeSeries}` - Fetch performance metrics
+- `GET /v1/{name=accounts/*/locations/*/admins}` - List location admins
+- `POST /v1/{parent=accounts/*/locations/*}/admins` - Create location admin
+- `GET /v1/{name=accounts/*/notifications}` - Get notification settings
+- `PUT /v1/{name=accounts/*/notifications}` - Update notification settings
+
+### Google Maps
+- `GET /maps/api/geocode/json` - Geocoding API
+- `GET /maps/api/place/textsearch/json` - Places API Text Search
+- `GET /maps/api/place/details/json` - Places API Details

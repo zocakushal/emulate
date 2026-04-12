@@ -221,13 +221,14 @@ export function oauthRoutes({ app, store, baseUrl, tokenMap }: RouteContext): vo
     const code_verifier = typeof body.code_verifier === "string" ? body.code_verifier : undefined;
     const bodyClientId = typeof body.client_id === "string" ? body.client_id : "";
     const bodyClientSecret = typeof body.client_secret === "string" ? body.client_secret : "";
+    const refresh_token = typeof body.refresh_token === "string" ? body.refresh_token : "";
 
-    if (grant_type !== "authorization_code") {
-      return c.json({ error: "unsupported_grant_type", error_description: "Only authorization_code is supported." }, 400);
+    if (grant_type !== "authorization_code" && grant_type !== "refresh_token") {
+      return c.json({ error: "unsupported_grant_type", error_description: "Only authorization_code and refresh_token are supported." }, 400);
     }
 
     const clientsConfigured = gs.oauthClients.all().length > 0;
-    if (clientsConfigured) {
+    if (clientsConfigured && grant_type === "authorization_code") {
       const client = gs.oauthClients.findOneBy("client_id", bodyClientId);
       if (!client) {
         return c.json({ error: "invalid_client", error_description: "The client_id is incorrect." }, 401);
@@ -237,60 +238,105 @@ export function oauthRoutes({ app, store, baseUrl, tokenMap }: RouteContext): vo
       }
     }
 
-    const pendingMap = getPendingCodes(store);
-    const pending = pendingMap.get(code);
-    if (!pending) {
-      return c.json({ error: "invalid_grant", error_description: "The code is incorrect or expired." }, 400);
-    }
-    if (isPendingCodeExpired(pending)) {
+    let user: GoogleUser | null = null;
+    let scopes: string[] = [];
+    let idToken = "";
+    let finalScope = "";
+
+    if (grant_type === "authorization_code") {
+      const pendingMap = getPendingCodes(store);
+      const pending = pendingMap.get(code);
+      if (!pending) {
+        return c.json({ error: "invalid_grant", error_description: "The code is incorrect or expired." }, 400);
+      }
+      if (isPendingCodeExpired(pending)) {
+        pendingMap.delete(code);
+        return c.json({ error: "invalid_grant", error_description: "The code is incorrect or expired." }, 400);
+      }
+
+      if (pending.codeChallenge != null) {
+        if (code_verifier === undefined) {
+          return c.json({ error: "invalid_grant", error_description: "PKCE verification failed." }, 400);
+        }
+        const method = (pending.codeChallengeMethod ?? "plain").toLowerCase();
+        if (method === "s256") {
+          const expected = createHash("sha256").update(code_verifier).digest("base64url");
+          if (expected !== pending.codeChallenge) {
+            return c.json({ error: "invalid_grant", error_description: "PKCE verification failed." }, 400);
+          }
+        } else if (method === "plain") {
+          if (code_verifier !== pending.codeChallenge) {
+            return c.json({ error: "invalid_grant", error_description: "PKCE verification failed." }, 400);
+          }
+        } else {
+          return c.json({ error: "invalid_grant", error_description: "PKCE verification failed." }, 400);
+        }
+      }
+
       pendingMap.delete(code);
-      return c.json({ error: "invalid_grant", error_description: "The code is incorrect or expired." }, 400);
-    }
 
-    if (pending.codeChallenge != null) {
-      if (code_verifier === undefined) {
-        return c.json({ error: "invalid_grant", error_description: "PKCE verification failed." }, 400);
+      user = gs.users.findOneBy("email", pending.email as GoogleUser["email"]);
+      if (!user) {
+        return c.json({ error: "invalid_grant", error_description: "User not found." }, 400);
       }
-      const method = (pending.codeChallengeMethod ?? "plain").toLowerCase();
-      if (method === "s256") {
-        const expected = createHash("sha256").update(code_verifier).digest("base64url");
-        if (expected !== pending.codeChallenge) {
-          return c.json({ error: "invalid_grant", error_description: "PKCE verification failed." }, 400);
-        }
-      } else if (method === "plain") {
-        if (code_verifier !== pending.codeChallenge) {
-          return c.json({ error: "invalid_grant", error_description: "PKCE verification failed." }, 400);
-        }
-      } else {
-        return c.json({ error: "invalid_grant", error_description: "PKCE verification failed." }, 400);
+
+      scopes = pending.scope ? pending.scope.split(/\s+/).filter(Boolean) : [];
+      finalScope = pending.scope || "openid email profile";
+      idToken = await createIdToken(user, pending.clientId, pending.nonce, baseUrl);
+    } else if (grant_type === "refresh_token") {
+      if (!refresh_token) {
+        return c.json({ error: "invalid_request", error_description: "refresh_token is required." }, 400);
       }
-    }
-
-    pendingMap.delete(code);
-
-    const user = gs.users.findOneBy("email", pending.email as GoogleUser["email"]);
-    if (!user) {
-      return c.json({ error: "invalid_grant", error_description: "User not found." }, 400);
+      user = gs.users.all()[0] ?? null;
+      if (!user) {
+        return c.json({ error: "invalid_grant", error_description: "No users in emulator." }, 400);
+      }
+      scopes = ["openid", "email", "profile", "https://www.googleapis.com/auth/business.manage"];
+      finalScope = scopes.join(" ");
+      idToken = await createIdToken(user, bodyClientId || "emulator-client", null, baseUrl);
     }
 
     const accessToken = "google_" + randomBytes(20).toString("base64url");
-    const scopes = pending.scope ? pending.scope.split(/\s+/).filter(Boolean) : [];
 
-    if (tokenMap) {
+    if (tokenMap && user) {
       tokenMap.set(accessToken, { login: user.email, id: user.id, scopes });
     }
 
-    const idToken = await createIdToken(user, pending.clientId, pending.nonce, baseUrl);
-
-    debug("google.oauth", `[Google token] issued token for ${user.email}`);
+    debug("google.oauth", `[Google token] issued token for ${user?.email} via ${grant_type}`);
 
     return c.json({
       access_token: accessToken,
       id_token: idToken,
       token_type: "Bearer",
       expires_in: 3600,
-      scope: pending.scope || "openid email profile",
+      scope: finalScope,
+      ...(grant_type === "authorization_code" ? { refresh_token: "google_refresh_" + randomBytes(20).toString("base64url") } : {})
     });
+  });
+
+  // ---------- Token info ----------
+
+  app.get("/oauth2/v1/tokeninfo", (c) => {
+    const accessToken = c.req.query("access_token") || c.req.header("Authorization")?.replace("Bearer ", "");
+    if (!accessToken) {
+      return c.json({ error: "invalid_request", error_description: "Invalid Value" }, 400);
+    }
+    if (tokenMap) {
+      const tokenData = tokenMap.get(accessToken);
+      if (tokenData) {
+        return c.json({
+          issued_to: "emulator-client",
+          audience: "emulator-client",
+          user_id: tokenData.id,
+          scope: tokenData.scopes.join(" "),
+          expires_in: 3600,
+          email: tokenData.login,
+          verified_email: true,
+          access_type: "offline"
+        });
+      }
+    }
+    return c.json({ error: "invalid_token", error_description: "Invalid Value" }, 400);
   });
 
   // ---------- User info ----------
